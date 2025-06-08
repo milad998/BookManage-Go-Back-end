@@ -9,9 +9,9 @@ import (
     "BookManager/config"
     "BookManager/model"
 
-    "github.com/gorilla/mux"
+
     "go.mongodb.org/mongo-driver/bson"
-    "go.mongodb.org/mongo-driver/bson/primitive"
+    
 )
 
 var collection = config.GetCollection(config.DB, "book")
