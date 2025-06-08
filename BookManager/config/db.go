@@ -1,33 +1,25 @@
 package config
 
 import (
-    "context"
-    "go.mongodb.org/mongo-driver/mongo"
-    "go.mongodb.org/mongo-driver/mongo/options"
+    "fmt"
     "log"
-    "time"
+
+    "gorm.io/driver/postgres"
+    "gorm.io/gorm"
 )
 
-var DB *mongo.Client
+var DB *gorm.DB
 
-func ConnectDB() *mongo.Client {
-    client, err := mongo.NewClient(options.Client().ApplyURI("mongodb+srv://miladnasir2023:5F1gMW7nj0ywRbAy@cluster0.typokzf.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"))
+func ConnectDB() {
+    dsn := "host=localhost user=postgres password=yourpassword dbname=bookdb port=5432 sslmode=disable TimeZone=Asia/Amman"
+    db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
     if err != nil {
-        log.Fatal(err)
+        log.Fatal("Failed to connect to database:", err)
     }
 
-    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-    defer cancel()
+    DB = db
+    fmt.Println("Database connected")
 
-    err = client.Connect(ctx)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    DB = client
-    return DB
-}
-
-func GetCollection(client *mongo.Client, collectionName string) *mongo.Collection {
-    return client.Database("librarydb").Collection(collectionName)
+    // تلقائيًا ينشئ جدول الكتب لو مش موجود
+    DB.AutoMigrate(&Book{})
 }
