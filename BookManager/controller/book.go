@@ -3,35 +3,67 @@ package controller
 import (
     "context"
     "encoding/json"
-    "BookManager/config"
-    "BookManager/model"
     "net/http"
     "time"
+
+    "BookManager/config"
+    "BookManager/model"
+
     "github.com/gorilla/mux"
     "go.mongodb.org/mongo-driver/bson"
     "go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-var collection = config.GetCollection(config.DB,"book")
-var ctx, _= context.WithTimeout(context.Background(),10*time.Secound())
+var collection = config.GetCollection(config.DB, "book")
 
-func createBook(w http.ResponseWriter,r *http.Request){
-  var book  model.Book
-  json.NewDecoder(r.Body).Decode(&book)
-  res,_:=collection.InsertOne(ctx,book)
-  json.Encoder(w).Encode(res)
+// إعداد مهلة الاتصال
+var ctx, _ = context.WithTimeout(context.Background(), 10*time.Second)
+
+// ✅ إنشاء كتاب جديد
+func CreateBook(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "application/json")
+
+    var book model.Book
+    if err := json.NewDecoder(r.Body).Decode(&book); err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+
+    res, err := collection.InsertOne(ctx, book)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    json.NewEncoder(w).Encode(res)
 }
 
-func getBooks(w http.ResponseWriter, r *http.Request){
-  var books []model.Book
-  courser,_:= collection.Find(ctx,bson.M{})
-  defer courser.Close()
-  for courser.Next(ctx){
-    var book model.Book
-    courser.Decode(&book)
-    books= append(books,book)
-    
-  }
-  json.Encoder(w).Encode(books)
-  
+// ✅ استرجاع كل الكتب
+func GetBooks(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "application/json")
+
+    var books []model.Book
+
+    cursor, err := collection.Find(ctx, bson.M{})
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    defer cursor.Close(ctx)
+
+    for cursor.Next(ctx) {
+        var book model.Book
+        if err := cursor.Decode(&book); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+        books = append(books, book)
+    }
+
+    if err := cursor.Err(); err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    json.NewEncoder(w).Encode(books)
 }
